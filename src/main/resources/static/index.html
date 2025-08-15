@@ -5,34 +5,72 @@
     <style>
         body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
         h1 { color: #333; }
+        .controls { margin-bottom: 20px; }
+        select, button { padding: 5px 10px; margin-right: 10px; }
         .event { padding: 10px; margin-bottom: 10px; background: white; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .timestamp { font-size: 0.8em; color: gray; }
     </style>
 </head>
 <body>
 <h1>📡 EventStreamHub - Live Feed</h1>
+
+<div class="controls">
+    <label for="eventType">Filter by Event Type:</label>
+    <select id="eventType">
+        <option value="">All</option>
+        <option value="order.created">order.created</option>
+        <option value="payment.failed">payment.failed</option>
+        <option value="user.registered">user.registered</option>
+    </select>
+    <button id="applyFilter">Apply Filter</button>
+</div>
+
 <div id="events"></div>
 
 <script>
     const eventContainer = document.getElementById("events");
+    const eventTypeSelect = document.getElementById("eventType");
+    const applyFilterBtn = document.getElementById("applyFilter");
+    let eventSource;
 
-    const eventSource = new EventSource("/events/streams");
+    function connectSSE(filterType = "") {
+        if (eventSource) {
+            eventSource.close();
+        }
 
-    eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
+        let url = "/events/streams";
+        if (filterType) {
+            url += `?type=${encodeURIComponent(filterType)}`;
+        }
 
+        eventSource = new EventSource(url);
+
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            renderEvent(data);
+        };
+
+        eventSource.onerror = function(err) {
+            console.error("EventSource failed:", err);
+        };
+    }
+
+    function renderEvent(data) {
         const div = document.createElement("div");
         div.classList.add("event");
         div.innerHTML = `<strong>Type:</strong> ${data.type} <br>
-                             <strong>Payload:</strong> ${data.payload} <br>
-                             <span class="timestamp">${data.timestamp}</span>`;
-
+                         <strong>Payload:</strong> ${data.payload} <br>
+                         <span class="timestamp">${data.createdAt}</span>`;
         eventContainer.prepend(div);
-    };
+    }
 
-    eventSource.onerror = function(err) {
-        console.error("EventSource failed:", err);
-    };
+    applyFilterBtn.addEventListener("click", () => {
+        eventContainer.innerHTML = ""; // clear previous events
+        connectSSE(eventTypeSelect.value);
+    });
+
+    // Default: connect to all events
+    connectSSE();
 </script>
 </body>
 </html>

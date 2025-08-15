@@ -50,4 +50,11 @@ public class EventListenerService {
     public List<Events> getAllEvents() {
         return eventRepository.findAll();
     }
+    public List<Events> getAllEventsByType(String type,int limit) {
+        List<Events> events=eventRepository.findTopNByTypeOrderByCreatedAtDesc(type,limit);
+        return events;
+    }
+    public List<Events> getAllEventsByOrder(int limit){
+        return eventRepository.findTopNByOrderByCreatedAtDesc(limit);
+    }
 }

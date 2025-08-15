@@ -6,10 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -21,30 +18,29 @@ public class EventsController {
     private EventListenerService eventListenerService;
     @Autowired
     private ObjectMapper objectMapper;
+
     public EventsController(EventListenerService eventListenerService) {
         this.eventListenerService = eventListenerService;
     }
+
     @GetMapping
-    public List<Events> findAll(){
+    public List<Events> findAll() {
         return eventListenerService.getAllEvents();
     }
-//    @GetMapping(value = "/streams", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-//    public Flux<String> streamEvents() {
-//        return eventListenerService.streamEvents()
-//                .map(event -> "data:" + toJson(event) + "\n\n");
-//    }
-@GetMapping("/streams")
-public Flux<ServerSentEvent<Events>> streamEvents() {
-    return eventListenerService.streamEvents()
-            .map(event -> ServerSentEvent.builder(event).build());
-}
 
-    private String toJson(Events event) {
-        try {
-            return objectMapper.writeValueAsString(event);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    @GetMapping("/streams")
+    public Flux<ServerSentEvent<Events>> streamEvents(@RequestParam(required = false) String type,
+                                                      @RequestParam(defaultValue = "5") int limit) {
+        Flux<Events> pastevents = Flux.fromIterable(
+                type != null && !type.isEmpty() ?
+                        eventListenerService.getAllEventsByType(type, limit)
+                        : eventListenerService.getAllEventsByOrder(limit)
+        );
+        Flux<Events> liveEvents = eventListenerService.streamEvents()
+                .filter(event -> type == null || type.isEmpty() || event.getType().equals(type));
+        return Flux.concat(pastevents, liveEvents)
+                .map(events -> ServerSentEvent.builder(events).build());
+
     }
 
 
