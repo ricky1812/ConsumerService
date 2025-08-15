@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EventStreamHub - Live Events</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+        h1 { color: #333; }
+        .event { padding: 10px; margin-bottom: 10px; background: white; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .timestamp { font-size: 0.8em; color: gray; }
+    </style>
+</head>
+<body>
+<h1>📡 EventStreamHub - Live Feed</h1>
+<div id="events"></div>
+
+<script>
+    const eventContainer = document.getElementById("events");
+
+    const eventSource = new EventSource("/events/streams");
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        const div = document.createElement("div");
+        div.classList.add("event");
+        div.innerHTML = `<strong>Type:</strong> ${data.type} <br>
+                             <strong>Payload:</strong> ${data.payload} <br>
+                             <span class="timestamp">${data.timestamp}</span>`;
+
+        eventContainer.prepend(div);
+    };
+
+    eventSource.onerror = function(err) {
+        console.error("EventSource failed:", err);
+    };
+</script>
+</body>
+</html>
