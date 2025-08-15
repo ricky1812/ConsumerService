@@ -9,6 +9,8 @@ import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -29,17 +31,15 @@ public class EventsController {
     }
 
     @GetMapping("/streams")
-    public Flux<ServerSentEvent<Events>> streamEvents(@RequestParam(required = false) String type,
-                                                      @RequestParam(defaultValue = "5") int limit) {
-        Flux<Events> pastevents = Flux.fromIterable(
-                type != null && !type.isEmpty() ?
-                        eventListenerService.getAllEventsByType(type, limit)
-                        : eventListenerService.getAllEventsByOrder(limit)
-        );
-        Flux<Events> liveEvents = eventListenerService.streamEvents()
-                .filter(event -> type == null || type.isEmpty() || event.getType().equals(type));
-        return Flux.concat(pastevents, liveEvents)
-                .map(events -> ServerSentEvent.builder(events).build());
+    public Flux<ServerSentEvent<Events>> streamEvents(@RequestParam(required = false) String type, @RequestParam(defaultValue = "5") int limit) {
+
+        List<String> types = type==null?new ArrayList<>():Arrays.stream(type.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+
+        Flux<Events> pastevents = Flux.fromIterable(eventListenerService.getPastEvents(limit, types));
+
+
+        Flux<Events> liveEvents = eventListenerService.streamEvents().filter(event -> type.isEmpty() || event.getType().equals(type));
+        return Flux.concat(pastevents, liveEvents).map(events -> ServerSentEvent.builder(events).build());
 
     }
 

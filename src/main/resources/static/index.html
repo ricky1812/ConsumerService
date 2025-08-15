@@ -6,7 +6,7 @@
         body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
         h1 { color: #333; }
         .controls { margin-bottom: 20px; }
-        select, button { padding: 5px 10px; margin-right: 10px; }
+        select, button, input { padding: 5px 10px; margin-right: 10px; }
         .event { padding: 10px; margin-bottom: 10px; background: white; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .timestamp { font-size: 0.8em; color: gray; }
     </style>
@@ -22,6 +22,10 @@
         <option value="payment.failed">payment.failed</option>
         <option value="user.registered">user.registered</option>
     </select>
+
+    <label for="limit">Limit:</label>
+    <input type="number" id="limit" min="1" max="100" value="10">
+
     <button id="applyFilter">Apply Filter</button>
 </div>
 
@@ -30,17 +34,18 @@
 <script>
     const eventContainer = document.getElementById("events");
     const eventTypeSelect = document.getElementById("eventType");
+    const limitInput = document.getElementById("limit");
     const applyFilterBtn = document.getElementById("applyFilter");
     let eventSource;
 
-    function connectSSE(filterType = "") {
+    function connectSSE(filterType = "", limit = 10) {
         if (eventSource) {
             eventSource.close();
         }
 
-        let url = "/events/streams";
+        let url = `/events/streams?limit=${limit}`;
         if (filterType) {
-            url += `?type=${encodeURIComponent(filterType)}`;
+            url += `&type=${encodeURIComponent(filterType)}`;
         }
 
         eventSource = new EventSource(url);
@@ -66,10 +71,12 @@
 
     applyFilterBtn.addEventListener("click", () => {
         eventContainer.innerHTML = ""; // clear previous events
-        connectSSE(eventTypeSelect.value);
+        const filterType = eventTypeSelect.value;
+        const limit = parseInt(limitInput.value) || 10;
+        connectSSE(filterType, limit);
     });
 
-    // Default: connect to all events
+    // Default: connect to all events with default limit
     connectSSE();
 </script>
 </body>

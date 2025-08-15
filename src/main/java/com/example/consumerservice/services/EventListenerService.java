@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -50,11 +51,18 @@ public class EventListenerService {
     public List<Events> getAllEvents() {
         return eventRepository.findAll();
     }
-    public List<Events> getAllEventsByType(String type,int limit) {
-        List<Events> events=eventRepository.findTopNByTypeOrderByCreatedAtDesc(type,limit);
-        return events;
-    }
-    public List<Events> getAllEventsByOrder(int limit){
+
+
+    public List<Events> getAllEventsByOrder(int limit) {
         return eventRepository.findTopNByOrderByCreatedAtDesc(limit);
+    }
+
+    public List<Events> getPastEvents(int limit, List<String> types) {
+        if (types == null || types.isEmpty()) {
+            return eventRepository.findTopNByOrderByCreatedAtDesc(limit);
+        }
+        return eventRepository.findTopNByTypeInOrderByCreatedAtDesc(types, limit);
+
+
     }
 }
