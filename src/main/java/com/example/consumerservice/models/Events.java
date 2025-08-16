@@ -19,13 +19,16 @@ public class Events {
     private String payload;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
+    @Column(unique = true)
+    private String eventID;
 
     public Events() {
     }
 
-    public Events(String type, String payload) {
+    public Events(String type, String payload,String eventID) {
         this.type = type;
         this.payload = payload;
+        this.eventID = eventID;
 
     }
 

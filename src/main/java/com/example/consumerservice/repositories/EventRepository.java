@@ -23,4 +23,5 @@ public interface EventRepository extends JpaRepository<Events,Long> {
     default List<Events> findTopNByTypeInOrderByCreatedAtDesc(List<String> types, int limit) {
         return findTopNByTypeInOrderByCreatedAtDesc(types, PageRequest.of(0, limit));
     }
+    boolean existsByEventID(String eventID);
 }

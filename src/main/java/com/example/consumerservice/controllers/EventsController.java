@@ -38,7 +38,7 @@ public class EventsController {
         Flux<Events> pastevents = Flux.fromIterable(eventListenerService.getPastEvents(limit, types));
 
 
-        Flux<Events> liveEvents = eventListenerService.streamEvents().filter(event -> type.isEmpty() || event.getType().equals(type));
+        Flux<Events> liveEvents = eventListenerService.streamEvents().filter(event -> types.isEmpty() || types.contains(event.getType()));
         return Flux.concat(pastevents, liveEvents).map(events -> ServerSentEvent.builder(events).build());
 
     }

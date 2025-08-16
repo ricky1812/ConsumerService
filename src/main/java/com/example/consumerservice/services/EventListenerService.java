@@ -6,19 +6,28 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+@Slf4j
 @Service
 public class EventListenerService {
     private EventRepository eventRepository;
     private ObjectMapper objectMapper = new ObjectMapper();
     private final Sinks.Many<Events> sink;
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
 
     public EventListenerService(EventRepository eventRepository) {
         this.eventRepository = eventRepository;
@@ -26,20 +35,34 @@ public class EventListenerService {
     }
 
     @KafkaListener(topics = "eventhub", groupId = "eventhub-group")
-    public void consumeMessage(String message) {
-        System.out.println("📩 Received event: " + message);
-        try {
-            JsonNode jsonNode = objectMapper.readTree(message);
-            String type = jsonNode.has("type") ? jsonNode.get("type").asText() : "unknown";
+    public void consumeMessage(ConsumerRecord<String, String> record, Acknowledgment ack) {
+        log.info("Consumed key={}, partition={}, offset={}, value={}",
+                record.key(), record.partition(), record.offset(), record.value());
 
-            Events event = new Events(type, message);
+        try {
+            String message = record.value();
+            log.info("Received event: {}",message);
+            JsonNode jsonNode = objectMapper.readTree(message);
+            String eventId = jsonNode.has("id") ? jsonNode.get("id").asText() : UUID.randomUUID().toString();
+
+            String type = jsonNode.has("type") ? jsonNode.get("type").asText() : "unknown";
+            if (eventRepository.existsByEventID(eventId)) {
+                log.info("Duplicate event detected: {}", eventId);
+                ack.acknowledge();
+                return;
+            }
+            Events event = new Events(type, message,eventId);
             eventRepository.save(event);
             sink.tryEmitNext(event);
 
-            System.out.println("💾 Saved event: " + type);
+            System.out.println("💾 Saved event: " + event);
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
+            log.error("Failed to process event, sending to DLQ", e);
+            kafkaTemplate.send("eventhub-dlq", record.value());
+            ack.acknowledge();
+
         }
+
 
 
     }
