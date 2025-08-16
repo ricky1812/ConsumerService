@@ -1,6 +1,7 @@
 package com.example.consumerservice.controllers;
 
 import com.example.consumerservice.models.Events;
+import com.example.consumerservice.services.DLQService;
 import com.example.consumerservice.services.EventListenerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,11 +19,13 @@ import java.util.List;
 @RequestMapping("/events")
 public class EventsController {
     private EventListenerService eventListenerService;
+    private DLQService dlqService;
     @Autowired
     private ObjectMapper objectMapper;
 
-    public EventsController(EventListenerService eventListenerService) {
+    public EventsController(EventListenerService eventListenerService,DLQService dlqService) {
         this.eventListenerService = eventListenerService;
+        this.dlqService = dlqService;
     }
 
     @GetMapping
@@ -41,6 +44,10 @@ public class EventsController {
         Flux<Events> liveEvents = eventListenerService.streamEvents().filter(event -> types.isEmpty() || types.contains(event.getType()));
         return Flux.concat(pastevents, liveEvents).map(events -> ServerSentEvent.builder(events).build());
 
+    }
+    @GetMapping("/dlq")
+    public List<String> findAllDLQ() {
+        return dlqService.getDlqMessages(10);
     }
 
 
