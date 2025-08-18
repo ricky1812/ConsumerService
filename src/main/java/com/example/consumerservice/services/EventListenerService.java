@@ -10,8 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
@@ -28,11 +30,20 @@ public class EventListenerService {
     private final Sinks.Many<Events> sink;
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
+    private MetricsService metricsService;
 
-    public EventListenerService(EventRepository eventRepository) {
+    public EventListenerService(EventRepository eventRepository,MetricsService metricsService) {
         this.eventRepository = eventRepository;
         this.sink = Sinks.many().multicast().onBackpressureBuffer();
+        this.metricsService = metricsService;
     }
+    @RetryableTopic(
+            attempts = "4",
+            backoff = @Backoff(delay = 1000, multiplier = 3.0, maxDelay = 5000),
+            include = {JsonProcessingException.class, RuntimeException.class},
+            dltTopicSuffix = "-dlq",
+            autoCreateTopics = "true"
+    )
 
     @KafkaListener(topics = "eventhub", groupId = "eventhub-group")
     public void consumeMessage(ConsumerRecord<String, String> record, Acknowledgment ack) {
@@ -54,12 +65,14 @@ public class EventListenerService {
             Events event = new Events(type, message,eventId);
             eventRepository.save(event);
             sink.tryEmitNext(event);
+            metricsService.incrementEventCounter(type);
 
             System.out.println("💾 Saved event: " + event);
         } catch (Exception e) {
             log.error("Failed to process event, sending to DLQ", e);
-            kafkaTemplate.send("eventhub-dlq", record.value());
-            ack.acknowledge();
+            throw new  RuntimeException("Failed to process event", e);
+            //kafkaTemplate.send("eventhub-dlq", record.value());
+            //ack.acknowledge();
 
         }
 
