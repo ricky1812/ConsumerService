@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -85,7 +86,7 @@ public class EventListenerService {
     }
 
     public List<Events> getAllEvents() {
-        return eventRepository.findAll();
+        return eventRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 
 

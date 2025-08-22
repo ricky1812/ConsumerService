@@ -9,10 +9,15 @@
         select, button, input { padding: 5px 10px; margin-right: 10px; }
         .event { padding: 10px; margin-bottom: 10px; background: white; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .timestamp { font-size: 0.8em; color: gray; }
+        a { display: inline-block; margin-top: 10px; text-decoration: none; color: #007BFF; }
+        a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 <h1>📡 EventStreamHub - Live Feed</h1>
+
+<!-- Hyperlink to producer page -->
+<a href="http://localhost:8081/index.html">Go to Producer Page</a>
 
 <div class="controls">
     <label for="eventType">Filter by Event Type:</label>
